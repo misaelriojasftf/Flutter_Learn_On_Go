@@ -24,7 +24,7 @@ class AddressTextField extends StatefulWidget {
   final bool coordForRef;
 
   /// Callback to run when search ends.
-  final Function(BuildContext dialogContext, AddressPoint point) onDone;
+  final Function(BuildContext dialogContext, Address point) onDone;
 
   /// Constructs an [AddressTextField] widget from a concrete [country].
   AddressTextField({
@@ -60,9 +60,10 @@ class _AddressTextFieldState extends State<AddressTextField> {
   final String hintText;
   final List<String> exceptions;
   final bool coordForRef;
-  final Function(BuildContext context, AddressPoint point) onDone;
+  final Function(BuildContext context, Address point) onDone;
   final AddressPoint _addressPoint = AddressPoint._();
-  final List<String> _places = List();
+  List<Address> _address = List();
+
   BuildContext _dialogContext;
   Size _size = Size(0.0, 0.0);
   bool _loading;
@@ -125,7 +126,7 @@ class _AddressTextFieldState extends State<AddressTextField> {
               width: _size.width * 0.80 - 70.0,
               child: TextField(
                 onEditingComplete: () async => await _searchAddress(),
-                onChanged: (_) async => await _searchAddress(),
+                // onChanged: (_) async => await _searchAddress(),
                 controller: controller,
                 autofocus: true,
                 autocorrect: false,
@@ -155,27 +156,27 @@ class _AddressTextFieldState extends State<AddressTextField> {
         child: Center(
           child: _loading
               ? CircularProgressIndicator()
-              : ((_places.isNotEmpty)
+              : ((_address.isNotEmpty)
                   ? Container(
                       height: 200,
                       child: Card(
                         child: ListView.separated(
                           padding: EdgeInsets.all(10.0),
-                          itemCount: _places.length,
+                          itemCount: _address.length,
                           separatorBuilder: (BuildContext context, int index) =>
-                              (index != _places.length - 1)
+                              (index != _address.length - 1)
                                   ? Divider()
                                   : Container(),
                           itemBuilder: (BuildContext context, int index) {
+                            print(_address[index].coordinates.longitude);
                             return GestureDetector(
                               child: ListTile(
-                                title: Text(_places[index]),
+                                title: Text(_address[index].addressLine),
                                 trailing: Icon(Icons.chevron_right),
                               ),
                               onTap: () async {
-                                controller.text = _places[index];
-                                _addressPoint._address = controller.text;
-                                await _asyncFunct();
+                                controller.text = _address[index].addressLine;
+                                await _asyncFunct(_address[index]);
                               },
                             );
                           },
@@ -209,7 +210,7 @@ class _AddressTextFieldState extends State<AddressTextField> {
     final int length = controller.text.length;
     await Future.delayed(Duration(seconds: 2), () async {
       if (controller.text.isEmpty) {
-        _places.clear();
+        _address.clear();
         _loading = false;
         try {
           setState(() {});
@@ -221,25 +222,38 @@ class _AddressTextFieldState extends State<AddressTextField> {
             final String address = (city.isEmpty)
                 ? controller.text + ", " + country
                 : controller.text + ", " + city + ", " + country;
-            placeMarks = await Geolocator().placemarkFromAddress(address);
+
+            Geolocator geolocator = Geolocator()
+              ..forceAndroidLocationManager = true;
+
+            placeMarks = await geolocator.placemarkFromAddress(address);
+
+            // placeMarks.forEach((element) {
+            //   print(element.position.longitude);
+            // });
           }
           if (placeMarks.isNotEmpty) {
             _addressPoint._latitude = placeMarks[0].position.latitude;
             _addressPoint._longitude = placeMarks[0].position.longitude;
+
             final Coordinates coordinates =
                 Coordinates(_addressPoint._latitude, _addressPoint._longitude);
             final List<Address> addresses =
                 await Geocoder.local.findAddressesFromCoordinates(coordinates);
-            if (_places.isNotEmpty) {
-              _places.clear();
+            if (_address.isNotEmpty) {
+              _address.clear();
               setState(() {});
             }
             addresses.asMap().forEach((index, value) {
               final String place = value.addressLine;
+
               // Checks if place is not duplicated, if it's a country place and if it's not into exceptions
-              if (!_places.contains(place) &&
-                  place.endsWith(country) &&
-                  !exceptions.contains(place)) _places.add(place);
+              if (!_address.contains(place) &&
+                  place.endsWith("Perú") &&
+                  !exceptions.contains(place))
+                setState(() {
+                  _address.add(value);
+                });
             });
           }
         } on NoSuchMethodError catch (_) {} on PlatformException catch (_) {} catch (_) {
@@ -256,7 +270,7 @@ class _AddressTextFieldState extends State<AddressTextField> {
   /// If the user runs an asynchronous process in [onDone] function
   /// it will display an [CircularProgressIndicator] (changing [_waiting]
   /// vairable) in the [AddressTextField] until the process ends.
-  Future<void> _asyncFunct({bool notFound = false}) async {
+  Future<void> _asyncFunct(Address address, {bool notFound = false}) async {
     setState(() {
       _waiting = true;
     });
@@ -264,9 +278,9 @@ class _AddressTextFieldState extends State<AddressTextField> {
       _addressPoint._latitude = 0.0;
       _addressPoint._longitude = 0.0;
     }
-    if (onDone != null) await onDone(_dialogContext, _addressPoint);
+    if (onDone != null) await onDone(_dialogContext, address);
     _waiting = false;
-    _places.clear();
+    _address.clear();
     try {
       setState(() {});
     } catch (_) {}
