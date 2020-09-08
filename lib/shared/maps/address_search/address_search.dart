@@ -13,3 +13,4 @@ import 'package:location/location.dart';
 part './service/location_service.dart';
 part './model/address_model.dart';
 part './components/address_textfield.dart';
+part './utils/address_concat.dart';
