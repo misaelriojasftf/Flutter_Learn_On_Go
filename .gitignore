@@ -3,4 +3,8 @@
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.build/
 build/
+
+
+
