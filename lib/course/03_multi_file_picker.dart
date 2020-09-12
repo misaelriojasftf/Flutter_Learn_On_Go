@@ -28,8 +28,8 @@ class _MultiFilePickerState extends State<MultiFilePicker> {
         SnackBar(
           backgroundColor: result ? Colors.green : Colors.red,
           content: Text((result
-              ? 'Temporary files removed with success.'
-              : 'Failed to clean temporary files')),
+              ? 'Successfully removed'
+              : 'Error while trying to remove stored files')),
         ),
       );
     });
